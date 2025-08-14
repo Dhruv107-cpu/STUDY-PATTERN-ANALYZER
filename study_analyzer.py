@@ -1,150 +1,131 @@
+import os
+import random
+import requests
 import streamlit as st
-import pandas as pd
-from datetime import datetime
+from dotenv import load_dotenv
 
-# -------------------------------
-# Load or create dataset
-# -------------------------------
-def load_data():
+# Load environment variables
+load_dotenv()
+
+# Hugging Face API setup
+HF_API_KEY = os.getenv("HF_API_KEY")
+HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+
+# --------------- AI ADVICE FUNCTION ----------------
+def get_ai_advice(prompt: str) -> str:
+    """Fetch AI advice using Hugging Face API, with fallback tips if unavailable."""
     try:
-        df = pd.read_csv("study_data.csv")
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=["date", "hours_studied", "breaks_taken", "revision", "mood", "score"])
-    return df
+        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+        payload = {"inputs": f"Give personalized study advice for this student: {prompt}"}
 
-# -------------------------------
-# Save dataset
-# -------------------------------
-def save_data(df):
-    df.to_csv("study_data.csv", index=False)
+        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
 
-# -------------------------------
-# Generate advice
-# -------------------------------
-def generate_advice(df):
-    if df.empty:
-        return ["You haven't added any study data yet. Start logging your habits to get personalized advice!"]
+        output = response.json()
+        if isinstance(output, list) and "generated_text" in output[0]:
+            return output[0]["generated_text"].strip()
+        else:
+            return "⚠️ AI advice unavailable. Try again later."
 
-    latest = df.iloc[-1]  # Last entry
-    advice = []
+    except Exception:
+        # Fallback system
+        fallback_tips = [
+            "Break big tasks into smaller, achievable goals.",
+            "Stick to a consistent daily routine.",
+            "Use the Pomodoro technique: 25 mins study, 5 mins break.",
+            "Revise what you studied yesterday before learning new topics.",
+            "Avoid multitasking — focus on one subject at a time.",
+            "Test yourself with quizzes instead of passive reading.",
+            "Get proper sleep — memory strengthens during rest."
+        ]
+        return (
+            "⚠️ AI advice not available right now.\n\nHere are some fallback tips:\n- "
+            + "\n- ".join(random.sample(fallback_tips, 3))
+        )
 
-    if latest["hours_studied"] < 2:
-        advice.append("📖 Try to study at least 2–3 hours a day for consistent progress.")
+# --------------- STREAMLIT UI ----------------
+st.set_page_config(
+    page_title="📊 Study Pattern Analyzer",
+    page_icon="📘",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Background Styling (Dark theme friendly)
+st.markdown(
+    """
+    <style>
+    body {
+        background: linear-gradient(to right, #1f1f2e, #2c2c54);
+        color: #f8f8f2;
+    }
+    .stApp {
+        background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c");
+        background-size: cover;
+        background-attachment: fixed;
+    }
+    .chat-bubble {
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 12px;
+        max-width: 70%;
+    }
+    .user-bubble {
+        background-color: #4a69bd;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    .bot-bubble {
+        background-color: #2c3e50;
+        color: #ecf0f1;
+        margin-right: auto;
+        text-align: left;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.title("📘 Study Pattern Analyzer")
+st.markdown("### ✨ Get personalized study advice with AI + fallback tips")
+
+# Chat-like interface
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# User Input
+user_input = st.text_area("✍️ Describe your current study pattern:", height=120)
+
+if st.button("🔍 Analyze & Get Advice"):
+    if user_input.strip():
+        with st.spinner("Analyzing your study habits..."):
+            advice = get_ai_advice(user_input)
+
+        # Save to chat history
+        st.session_state.chat_history.append(("user", user_input))
+        st.session_state.chat_history.append(("bot", advice))
     else:
-        advice.append("✅ Great! Your study hours look consistent. Keep it up!")
+        st.warning("⚠️ Please enter your study pattern first.")
 
-    if latest["breaks_taken"] == 0:
-        advice.append("💡 You didn’t take any breaks. Short breaks improve focus and memory.")
-    elif latest["breaks_taken"] > 5:
-        advice.append("⏳ Too many breaks might be reducing your productivity. Try to limit them.")
+# Display chat history
+st.markdown("### 💬 Your Study Insights")
+for role, text in st.session_state.chat_history:
+    if role == "user":
+        st.markdown(f"<div class='chat-bubble user-bubble'>{text}</div>", unsafe_allow_html=True)
     else:
-        advice.append("👍 Your break schedule seems healthy.")
+        st.markdown(f"<div class='chat-bubble bot-bubble'>{text}</div>", unsafe_allow_html=True)
 
-    if latest["revision"] == 0:
-        advice.append("🔁 Add some revision time. Revising helps strengthen memory retention.")
-    else:
-        advice.append("📚 Good job revising! Keep reviewing older topics regularly.")
+# Gamification - XP System
+st.sidebar.header("🎯 Gamification Progress")
+if "xp" not in st.session_state:
+    st.session_state.xp = 0
 
-    if latest["mood"] == "Stressed":
-        advice.append("😟 You seem stressed. Try meditation, light exercise, or talking with a friend.")
-    elif latest["mood"] == "Tired":
-        advice.append("😴 You’re tired. Ensure proper sleep and stay hydrated for better focus.")
-    elif latest["mood"] == "Happy":
-        advice.append("😊 Being happy boosts learning efficiency. Stay positive!")
-    else:
-        advice.append("😐 A neutral mood is okay, but try to add small motivators like music or rewards.")
+if st.button("✅ I followed today's advice!"):
+    st.session_state.xp += 10
+    st.success("🔥 Great! You earned +10 XP")
 
-    if latest["score"] < 50:
-        advice.append("📉 Your performance is low. Focus on weak subjects and revise more often.")
-    elif latest["score"] < 75:
-        advice.append("📊 You’re doing decent. A little more practice can push you higher.")
-    else:
-        advice.append("🏆 Excellent performance! Keep following your current strategy.")
-
-    return advice
-
-# -------------------------------
-# Streamlit App
-# -------------------------------
-def run_app():
-    st.set_page_config(page_title="Study Analyzer AI", page_icon="🤖", layout="wide")
-
-    # -------------------------------
-    # Custom CSS for professional look
-    # -------------------------------
-    st.markdown(
-        """
-        <style>
-        /* Background image */
-        body {
-            background-image: url("https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80");
-            background-size: cover;
-            background-attachment: fixed;
-        }
-        /* Transparent container effect */
-        .stApp {
-            background-color: rgba(0,0,0,0.65);
-        }
-        /* Chat bubble styling */
-        .chat-bubble {
-            background: rgba(255, 255, 255, 0.1);
-            color: #f2f2f2;
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin: 8px 0;
-            font-size: 16px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-        }
-        /* Dark/light mode adaptive text */
-        @media (prefers-color-scheme: light) {
-            .chat-bubble { color: #111; background: rgba(255,255,255,0.7); }
-            .stApp { background-color: rgba(255,255,255,0.6); }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # -------------------------------
-    # Header
-    # -------------------------------
-    st.markdown("<h1 style='text-align: center; color: white;'>🤖 Study Coach Assistant</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #ddd;'>Track your daily habits and receive smart advice to improve performance.</p>", unsafe_allow_html=True)
-
-    df = load_data()
-
-    # Sidebar input
-    st.sidebar.header("➕ Add New Study Entry")
-    with st.sidebar.form("entry_form"):
-        date = st.date_input("Date", datetime.today())
-        hours = st.number_input("Hours Studied", min_value=0.0, step=0.5)
-        breaks = st.number_input("Breaks Taken", min_value=0, step=1)
-        revision = st.number_input("Revision Time (hrs)", min_value=0.0, step=0.5)
-        mood = st.selectbox("Mood", ["Happy", "Stressed", "Neutral", "Tired"])
-        score = st.number_input("Score (0-100)", min_value=0, max_value=100, step=1)
-
-        submitted = st.form_submit_button("Save Entry")
-        if submitted:
-            new_entry = pd.DataFrame(
-                [[date, hours, breaks, revision, mood, score]],
-                columns=["date", "hours_studied", "breaks_taken", "revision", "mood", "score"]
-            )
-            df = pd.concat([df, new_entry], ignore_index=True)
-            save_data(df)
-            st.sidebar.success("✅ Entry Saved!")
-
-    # -------------------------------
-    # Advice in chat bubbles
-    # -------------------------------
-    st.subheader("💬 Your Personalized Advice")
-    advice_list = generate_advice(df)
-
-    for msg in advice_list:
-        st.markdown(f"<div class='chat-bubble'>{msg}</div>", unsafe_allow_html=True)
-
-# -------------------------------
-# Run app
-# -------------------------------
-if __name__ == "__main__":
-    run_app()
+st.sidebar.progress(min(st.session_state.xp, 100))
+st.sidebar.write(f"XP: {st.session_state.xp}/100")
+if st.session_state.xp >= 100:
+    st.sidebar.success("🏆 Congrats! You reached Level 1 🎉")
