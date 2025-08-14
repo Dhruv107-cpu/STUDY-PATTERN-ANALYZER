@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import random
+from datetime import datetime
 
 # -------------------------------
 # Function to load or create dataset
@@ -20,68 +20,70 @@ def save_data(df):
     df.to_csv("study_data.csv", index=False)
 
 # -------------------------------
-# Function to generate advice
+# Function to analyze and generate advice
 # -------------------------------
 def generate_advice(df):
+    if df.empty:
+        return ["You haven't added any study data yet. Start logging your habits to get personalized advice!"]
+
+    latest = df.iloc[-1]  # Last entry
     advice = []
 
-    # Average values
-    avg_hours = df["hours_studied"].mean()
-    avg_score = df["score"].mean()
-    avg_breaks = df["breaks_taken"].mean()
-    avg_revision = df["revision"].mean()
-
-    # Hours studied vs score
-    if avg_hours < 2:
-        advice.append("📌 Try to study at least 2-3 hours daily. Your current average is too low.")
-    elif avg_hours > 6:
-        advice.append("📌 You are studying a lot (6+ hrs). Ensure you get enough rest.")
+    # Hours studied
+    if latest["hours_studied"] < 2:
+        advice.append("📖 Try to study at least 2–3 hours a day for consistent progress.")
     else:
-        advice.append("✅ Your study hours look balanced. Keep it up!")
+        advice.append("✅ Great! Your study hours look consistent. Keep it up!")
 
-    # Breaks
-    if avg_breaks > 5:
-        advice.append("⚠️ Too many breaks may reduce focus. Try limiting breaks.")
-    elif avg_breaks < 2:
-        advice.append("💡 Fewer breaks can cause fatigue. Short breaks improve efficiency.")
+    # Breaks taken
+    if latest["breaks_taken"] == 0:
+        advice.append("💡 You didn’t take any breaks. Short breaks improve focus and memory.")
+    elif latest["breaks_taken"] > 5:
+        advice.append("⏳ Too many breaks might be reducing your productivity. Try to limit them.")
     else:
-        advice.append("✅ Your break frequency is healthy.")
+        advice.append("👍 Your break schedule seems healthy.")
 
     # Revision
-    if avg_revision < 1:
-        advice.append("📖 Add more revision sessions. Revision strengthens memory.")
+    if latest["revision"] == 0:
+        advice.append("🔁 Add some revision time. Revising helps strengthen memory retention.")
     else:
-        advice.append("✅ You are revising well.")
+        advice.append("📚 Good job revising! Keep reviewing older topics regularly.")
 
-    # Mood analysis
-    if "mood" in df.columns:
-        best_mood = df.groupby("mood")["score"].mean().idxmax()
-        advice.append(f"😊 You perform best when you are **{best_mood}**. Try to maintain this mindset.")
+    # Mood
+    if latest["mood"] == "Stressed":
+        advice.append("😟 You seem stressed. Try meditation, light exercise, or talking with a friend.")
+    elif latest["mood"] == "Tired":
+        advice.append("😴 You’re tired. Ensure proper sleep and stay hydrated for better focus.")
+    elif latest["mood"] == "Happy":
+        advice.append("😊 Being happy boosts learning efficiency. Stay positive!")
+    else:
+        advice.append("😐 A neutral mood is okay, but try to add small motivators like music or rewards.")
 
-    # Score check
-    if avg_score < 50:
-        advice.append("⚠️ Your average score is low. Focus on consistent study and revision.")
-    elif avg_score >= 75:
-        advice.append("🌟 Great! Your performance is strong. Keep pushing towards excellence.")
+    # Score
+    if latest["score"] < 50:
+        advice.append("📉 Your performance is low. Focus on weak subjects and revise more often.")
+    elif latest["score"] < 75:
+        advice.append("📊 You’re doing decent. A little more practice can push you higher.")
+    else:
+        advice.append("🏆 Excellent performance! Keep following your current strategy.")
 
     return advice
 
 
 # -------------------------------
-# Streamlit app
+# Chatbot-style UI
 # -------------------------------
 def run_app():
-    st.title("📊 Study Pattern Analyzer + Smart Advice")
-    st.write("Track your study habits, analyze performance, and get **personalized advice**!")
+    st.set_page_config(page_title="Study Analyzer AI", page_icon="📊", layout="centered")
+    st.markdown("<h1 style='text-align: center;'>🤖 Study Coach Assistant</h1>", unsafe_allow_html=True)
+    st.write("Log your daily study habits and get **personalized AI advice** for better performance.")
 
     df = load_data()
 
-    # -------------------------------
-    # Data entry form
-    # -------------------------------
+    # Sidebar input
     st.sidebar.header("➕ Add New Study Entry")
     with st.sidebar.form("entry_form"):
-        date = st.date_input("Date")
+        date = st.date_input("Date", datetime.today())
         hours = st.number_input("Hours Studied", min_value=0.0, step=0.5)
         breaks = st.number_input("Breaks Taken", min_value=0, step=1)
         revision = st.number_input("Revision Time (hrs)", min_value=0.0, step=0.5)
@@ -96,53 +98,25 @@ def run_app():
             )
             df = pd.concat([df, new_entry], ignore_index=True)
             save_data(df)
-            st.success("✅ Entry Saved!")
+            st.sidebar.success("✅ Entry Saved!")
 
     # -------------------------------
-    # Show dataset
+    # Chatbot output (Advice)
     # -------------------------------
-    if not df.empty:
-        st.subheader("📂 Study Data")
-        st.dataframe(df)
+    st.subheader("💬 Your Study Assistant's Advice")
+    advice_list = generate_advice(df)
 
-        # -------------------------------
-        # Correlation Heatmap
-        # -------------------------------
-        st.subheader("📈 Correlation Heatmap")
-        numeric_df = df.drop(columns=["date", "mood"], errors="ignore")
-        numeric_df = numeric_df.select_dtypes(include=['number'])
-
-        if not numeric_df.empty:
-            fig, ax = plt.subplots()
-            sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax)
-            st.pyplot(fig)
-
-        # -------------------------------
-        # Line chart: Hours studied over time
-        # -------------------------------
-        st.subheader("📊 Study Hours Over Time")
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df_sorted = df.sort_values(by="date")
-        st.line_chart(df_sorted.set_index("date")["hours_studied"])
-
-        # -------------------------------
-        # Extra: Average Score by Mood
-        # -------------------------------
-        st.subheader("😊 Average Score by Mood")
-        if "mood" in df.columns:
-            mood_avg = df.groupby("mood")["score"].mean()
-            st.bar_chart(mood_avg)
-
-        # -------------------------------
-        # AI-Style Advice
-        # -------------------------------
-        st.subheader("💡 Personalized Study Advice")
-        advice_list = generate_advice(df)
-        for tip in advice_list:
-            st.write("- " + tip)
-
-    else:
-        st.info("No data available yet. Add your first study entry from the sidebar!")
+    if advice_list:
+        for msg in advice_list:
+            st.markdown(f"""
+                <div style='background-color:#f0f2f6;
+                            padding:10px;
+                            border-radius:12px;
+                            margin:5px 0;
+                            font-size:16px;'>
+                    {msg}
+                </div>
+                """, unsafe_allow_html=True)
 
 
 # -------------------------------
