@@ -1,95 +1,98 @@
+import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-import joblib
-import streamlit as st
 
-# =====================
-# DATA LOADING
-# =====================
+# -------------------------------
+# Function to load or create dataset
+# -------------------------------
 def load_data():
-    df = pd.read_csv("study_logs.csv")
+    try:
+        df = pd.read_csv("study_data.csv")
+    except FileNotFoundError:
+        df = pd.DataFrame(columns=["date", "hours_studied", "breaks_taken", "revision", "mood", "score"])
     return df
 
-# =====================
-# DATA PREPROCESSING
-# =====================
-def preprocess_data(df):
-    df = df.copy()
-    le = LabelEncoder()
-    df["Mood"] = le.fit_transform(df["Mood"])
-    X = df[["Study_Hours", "Sleep_Hours", "Distractions", "Breaks", "Mood"]]
-    y = df["Score"]
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    return X_scaled, y, le, scaler
+# -------------------------------
+# Function to save dataset
+# -------------------------------
+def save_data(df):
+    df.to_csv("study_data.csv", index=False)
 
-# =====================
-# MODEL TRAINING
-# =====================
-def train_model(X, y):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    return model, mse, r2
-
-# =====================
-# SAVE MODEL
-# =====================
-def save_model(model, le, scaler):
-    joblib.dump(model, "model.pkl")
-    joblib.dump(le, "label_encoder.pkl")
-    joblib.dump(scaler, "scaler.pkl")
-
-# =====================
-# STREAMLIT APP
-# =====================
+# -------------------------------
+# Streamlit app
+# -------------------------------
 def run_app():
     st.title("📊 Study Pattern Analyzer")
-    st.write("Predict your performance based on study habits")
+    st.write("Track your study habits and analyze how they impact your performance!")
 
-    study_hours = st.slider("Study Hours", 0.0, 12.0, 5.0)
-    sleep_hours = st.slider("Sleep Hours", 0.0, 12.0, 7.0)
-    distractions = st.slider("Distractions", 0, 10, 2)
-    breaks = st.slider("Breaks", 0, 10, 3)
-    mood = st.selectbox("Mood", ["Focused", "Motivated", "Neutral", "Tired", "Stressed"])
-
-    if st.button("Predict Performance"):
-        model = joblib.load("model.pkl")
-        le = joblib.load("label_encoder.pkl")
-        scaler = joblib.load("scaler.pkl")
-
-        mood_encoded = le.transform([mood])[0]
-        input_data = np.array([[study_hours, sleep_hours, distractions, breaks, mood_encoded]])
-        input_scaled = scaler.transform(input_data)
-
-        prediction = model.predict(input_scaled)[0]
-        st.success(f"Predicted Score: {prediction:.2f} / 100")
-
-    # Show dataset insights
-    st.subheader("📈 Dataset Insights")
     df = load_data()
-    st.dataframe(df.head())
 
-    fig, ax = plt.subplots()
-    sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
-    st.pyplot(fig)
+    # -------------------------------
+    # Data entry form
+    # -------------------------------
+    st.sidebar.header("➕ Add New Study Entry")
+    with st.sidebar.form("entry_form"):
+        date = st.date_input("Date")
+        hours = st.number_input("Hours Studied", min_value=0.0, step=0.5)
+        breaks = st.number_input("Breaks Taken", min_value=0, step=1)
+        revision = st.number_input("Revision Time (hrs)", min_value=0.0, step=0.5)
+        mood = st.selectbox("Mood", ["Happy", "Stressed", "Neutral", "Tired"])
+        score = st.number_input("Score (0-100)", min_value=0, max_value=100, step=1)
 
-# =====================
-# MAIN
-# =====================
+        submitted = st.form_submit_button("Save Entry")
+        if submitted:
+            new_entry = pd.DataFrame(
+                [[date, hours, breaks, revision, mood, score]],
+                columns=["date", "hours_studied", "breaks_taken", "revision", "mood", "score"]
+            )
+            df = pd.concat([df, new_entry], ignore_index=True)
+            save_data(df)
+            st.success("✅ Entry Saved!")
+
+    # -------------------------------
+    # Show dataset
+    # -------------------------------
+    if not df.empty:
+        st.subheader("📂 Study Data")
+        st.dataframe(df)
+
+        # -------------------------------
+        # Correlation Heatmap (numeric only)
+        # -------------------------------
+        st.subheader("📈 Correlation Heatmap")
+        numeric_df = df.drop(columns=["date", "mood"], errors="ignore")
+        numeric_df = numeric_df.select_dtypes(include=['number'])
+
+        if not numeric_df.empty:
+            fig, ax = plt.subplots()
+            sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax)
+            st.pyplot(fig)
+        else:
+            st.info("No numeric data available for correlation.")
+
+        # -------------------------------
+        # Line chart: Hours studied over time
+        # -------------------------------
+        st.subheader("📊 Study Hours Over Time")
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        df_sorted = df.sort_values(by="date")
+        st.line_chart(df_sorted.set_index("date")["hours_studied"])
+
+        # -------------------------------
+        # Extra: Average Score by Mood
+        # -------------------------------
+        st.subheader("😊 Average Score by Mood")
+        if "mood" in df.columns:
+            mood_avg = df.groupby("mood")["score"].mean()
+            st.bar_chart(mood_avg)
+
+    else:
+        st.info("No data available yet. Add your first study entry from the sidebar!")
+
+
+# -------------------------------
+# Run app
+# -------------------------------
 if __name__ == "__main__":
-    df = load_data()
-    X, y, le, scaler = preprocess_data(df)
-    model, mse, r2 = train_model(X, y)
-    save_model(model, le, scaler)
-    print(f"Model trained. MSE: {mse:.2f}, R2: {r2:.2f}")
     run_app()
