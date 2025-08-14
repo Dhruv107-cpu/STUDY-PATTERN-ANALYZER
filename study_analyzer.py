@@ -69,13 +69,26 @@ st.title("📘 Study Pattern Analyzer")
 st.markdown("### ✨ Select your study habits to get personalized advice")
 
 # ----------------- User Inputs (Selectable) -----------------
-hours_studied = st.slider("📚 Hours Studied Today", min_value=0, max_value=12, value=4, step=0.5)
-breaks_taken = st.slider("☕ Breaks Taken", min_value=0, max_value=10, value=2, step=1)
+hours_studied = st.slider(
+    "📚 Hours Studied Today",
+    min_value=0.0,
+    max_value=12.0,
+    value=4.0,
+    step=0.5
+)
+
+breaks_taken = st.slider(
+    "☕ Breaks Taken",
+    min_value=0,
+    max_value=10,
+    value=2,
+    step=1
+)
+
 revision_done = st.selectbox("🔁 Did you revise today?", options=["Yes", "No"])
 mood = st.selectbox("😊 Mood Today", options=["Happy", "Neutral", "Stressed", "Tired"])
 energy_level = st.selectbox("⚡ Energy Level", options=["High", "Medium", "Low"])
 
-# Convert selection to suitable format
 revision_bool = True if revision_done == "Yes" else False
 
 # ----------------- Chat & Gamification -----------------
@@ -86,7 +99,13 @@ if "xp" not in st.session_state:
     st.session_state.xp = 0
 
 # Combine input data into a prompt for AI
-prompt_text = f"Hours studied: {hours_studied}, Breaks: {breaks_taken}, Revision: {revision_done}, Mood: {mood}, Energy: {energy_level}"
+prompt_text = (
+    f"Hours studied: {hours_studied}, "
+    f"Breaks: {breaks_taken}, "
+    f"Revision: {revision_done}, "
+    f"Mood: {mood}, "
+    f"Energy: {energy_level}"
+)
 
 if st.button("🔍 Get Personalized Advice"):
     advice = get_ai_advice(prompt_text)
