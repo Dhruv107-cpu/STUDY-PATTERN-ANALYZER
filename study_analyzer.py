@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
-import random
 from datetime import datetime
 
 # -------------------------------
-# Function to load or create dataset
+# Load or create dataset
 # -------------------------------
 def load_data():
     try:
@@ -14,13 +13,13 @@ def load_data():
     return df
 
 # -------------------------------
-# Function to save dataset
+# Save dataset
 # -------------------------------
 def save_data(df):
     df.to_csv("study_data.csv", index=False)
 
 # -------------------------------
-# Function to analyze and generate advice
+# Generate advice
 # -------------------------------
 def generate_advice(df):
     if df.empty:
@@ -29,13 +28,11 @@ def generate_advice(df):
     latest = df.iloc[-1]  # Last entry
     advice = []
 
-    # Hours studied
     if latest["hours_studied"] < 2:
         advice.append("📖 Try to study at least 2–3 hours a day for consistent progress.")
     else:
         advice.append("✅ Great! Your study hours look consistent. Keep it up!")
 
-    # Breaks taken
     if latest["breaks_taken"] == 0:
         advice.append("💡 You didn’t take any breaks. Short breaks improve focus and memory.")
     elif latest["breaks_taken"] > 5:
@@ -43,13 +40,11 @@ def generate_advice(df):
     else:
         advice.append("👍 Your break schedule seems healthy.")
 
-    # Revision
     if latest["revision"] == 0:
         advice.append("🔁 Add some revision time. Revising helps strengthen memory retention.")
     else:
         advice.append("📚 Good job revising! Keep reviewing older topics regularly.")
 
-    # Mood
     if latest["mood"] == "Stressed":
         advice.append("😟 You seem stressed. Try meditation, light exercise, or talking with a friend.")
     elif latest["mood"] == "Tired":
@@ -59,7 +54,6 @@ def generate_advice(df):
     else:
         advice.append("😐 A neutral mood is okay, but try to add small motivators like music or rewards.")
 
-    # Score
     if latest["score"] < 50:
         advice.append("📉 Your performance is low. Focus on weak subjects and revise more often.")
     elif latest["score"] < 75:
@@ -69,14 +63,54 @@ def generate_advice(df):
 
     return advice
 
-
 # -------------------------------
-# Chatbot-style UI
+# Streamlit App
 # -------------------------------
 def run_app():
-    st.set_page_config(page_title="Study Analyzer AI", page_icon="📊", layout="centered")
-    st.markdown("<h1 style='text-align: center;'>🤖 Study Coach Assistant</h1>", unsafe_allow_html=True)
-    st.write("Log your daily study habits and get **personalized AI advice** for better performance.")
+    st.set_page_config(page_title="Study Analyzer AI", page_icon="🤖", layout="wide")
+
+    # -------------------------------
+    # Custom CSS for professional look
+    # -------------------------------
+    st.markdown(
+        """
+        <style>
+        /* Background image */
+        body {
+            background-image: url("https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        /* Transparent container effect */
+        .stApp {
+            background-color: rgba(0,0,0,0.65);
+        }
+        /* Chat bubble styling */
+        .chat-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f2f2f2;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            font-size: 16px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+        }
+        /* Dark/light mode adaptive text */
+        @media (prefers-color-scheme: light) {
+            .chat-bubble { color: #111; background: rgba(255,255,255,0.7); }
+            .stApp { background-color: rgba(255,255,255,0.6); }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # -------------------------------
+    # Header
+    # -------------------------------
+    st.markdown("<h1 style='text-align: center; color: white;'>🤖 Study Coach Assistant</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #ddd;'>Track your daily habits and receive smart advice to improve performance.</p>", unsafe_allow_html=True)
 
     df = load_data()
 
@@ -101,23 +135,13 @@ def run_app():
             st.sidebar.success("✅ Entry Saved!")
 
     # -------------------------------
-    # Chatbot output (Advice)
+    # Advice in chat bubbles
     # -------------------------------
-    st.subheader("💬 Your Study Assistant's Advice")
+    st.subheader("💬 Your Personalized Advice")
     advice_list = generate_advice(df)
 
-    if advice_list:
-        for msg in advice_list:
-            st.markdown(f"""
-                <div style='background-color:#f0f2f6;
-                            padding:10px;
-                            border-radius:12px;
-                            margin:5px 0;
-                            font-size:16px;'>
-                    {msg}
-                </div>
-                """, unsafe_allow_html=True)
-
+    for msg in advice_list:
+        st.markdown(f"<div class='chat-bubble'>{msg}</div>", unsafe_allow_html=True)
 
 # -------------------------------
 # Run app
