@@ -11,7 +11,7 @@ load_dotenv()
 HF_API_KEY = os.getenv("HF_API_KEY")
 HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
-# --------------- AI ADVICE FUNCTION ----------------
+# ----------------- AI ADVICE FUNCTION -----------------
 def get_ai_advice(prompt: str) -> str:
     """Fetch AI advice using Hugging Face API, with fallback tips if unavailable."""
     try:
@@ -43,7 +43,7 @@ def get_ai_advice(prompt: str) -> str:
             + "\n- ".join(random.sample(fallback_tips, 3))
         )
 
-# --------------- STREAMLIT UI ----------------
+# ----------------- STREAMLIT UI -----------------
 st.set_page_config(
     page_title="📊 Study Pattern Analyzer",
     page_icon="📘",
@@ -51,76 +51,58 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Background Styling (Dark theme friendly)
+# Dark theme & background
 st.markdown(
     """
     <style>
-    body {
-        background: linear-gradient(to right, #1f1f2e, #2c2c54);
-        color: #f8f8f2;
-    }
-    .stApp {
-        background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c");
-        background-size: cover;
-        background-attachment: fixed;
-    }
-    .chat-bubble {
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 12px;
-        max-width: 70%;
-    }
-    .user-bubble {
-        background-color: #4a69bd;
-        color: white;
-        margin-left: auto;
-        text-align: right;
-    }
-    .bot-bubble {
-        background-color: #2c3e50;
-        color: #ecf0f1;
-        margin-right: auto;
-        text-align: left;
-    }
+    body {background: linear-gradient(to right, #1f1f2e, #2c2c54); color: #f8f8f2;}
+    .stApp {background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c"); background-size: cover; background-attachment: fixed;}
+    .chat-bubble {padding: 1rem; margin: 0.5rem 0; border-radius: 12px; max-width: 70%;}
+    .user-bubble {background-color: #4a69bd; color: white; margin-left: auto; text-align: right;}
+    .bot-bubble {background-color: #2c3e50; color: #ecf0f1; margin-right: auto; text-align: left;}
     </style>
     """,
     unsafe_allow_html=True
 )
 
 st.title("📘 Study Pattern Analyzer")
-st.markdown("### ✨ Get personalized study advice with AI + fallback tips")
+st.markdown("### ✨ Select your study habits to get personalized advice")
 
-# Chat-like interface
+# ----------------- User Inputs (Selectable) -----------------
+hours_studied = st.slider("📚 Hours Studied Today", min_value=0, max_value=12, value=4, step=0.5)
+breaks_taken = st.slider("☕ Breaks Taken", min_value=0, max_value=10, value=2, step=1)
+revision_done = st.selectbox("🔁 Did you revise today?", options=["Yes", "No"])
+mood = st.selectbox("😊 Mood Today", options=["Happy", "Neutral", "Stressed", "Tired"])
+energy_level = st.selectbox("⚡ Energy Level", options=["High", "Medium", "Low"])
+
+# Convert selection to suitable format
+revision_bool = True if revision_done == "Yes" else False
+
+# ----------------- Chat & Gamification -----------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# User Input
-user_input = st.text_area("✍️ Describe your current study pattern:", height=120)
+if "xp" not in st.session_state:
+    st.session_state.xp = 0
 
-if st.button("🔍 Analyze & Get Advice"):
-    if user_input.strip():
-        with st.spinner("Analyzing your study habits..."):
-            advice = get_ai_advice(user_input)
+# Combine input data into a prompt for AI
+prompt_text = f"Hours studied: {hours_studied}, Breaks: {breaks_taken}, Revision: {revision_done}, Mood: {mood}, Energy: {energy_level}"
 
-        # Save to chat history
-        st.session_state.chat_history.append(("user", user_input))
-        st.session_state.chat_history.append(("bot", advice))
-    else:
-        st.warning("⚠️ Please enter your study pattern first.")
+if st.button("🔍 Get Personalized Advice"):
+    advice = get_ai_advice(prompt_text)
+    st.session_state.chat_history.append(("user", prompt_text))
+    st.session_state.chat_history.append(("bot", advice))
 
 # Display chat history
-st.markdown("### 💬 Your Study Insights")
+st.markdown("### 💬 Study Insights")
 for role, text in st.session_state.chat_history:
     if role == "user":
         st.markdown(f"<div class='chat-bubble user-bubble'>{text}</div>", unsafe_allow_html=True)
     else:
         st.markdown(f"<div class='chat-bubble bot-bubble'>{text}</div>", unsafe_allow_html=True)
 
-# Gamification - XP System
+# Gamification - XP
 st.sidebar.header("🎯 Gamification Progress")
-if "xp" not in st.session_state:
-    st.session_state.xp = 0
-
 if st.button("✅ I followed today's advice!"):
     st.session_state.xp += 10
     st.success("🔥 Great! You earned +10 XP")
