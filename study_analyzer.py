@@ -3,44 +3,37 @@ import random
 import requests
 import streamlit as st
 from dotenv import load_dotenv
-import time
 
 # Load environment variables
 load_dotenv()
 
 # Hugging Face API setup
 HF_API_KEY = os.getenv("HF_API_KEY")
-HF_API_URL = "https://api-inference.huggingface.co/models/bigscience/bloomz-560m"
-
+HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
 
 # ----------------- AI ADVICE FUNCTION -----------------
 def get_ai_advice(prompt: str) -> str:
-    """Fetch AI advice using Hugging Face API, with retries if model is loading."""
+    """Fetch AI advice using Hugging Face API, with debug logging."""
     try:
         headers = {"Authorization": f"Bearer {HF_API_KEY}"}
         payload = {"inputs": f"Give personalized study advice for this student: {prompt}"}
 
-        # Retry up to 3 times in case model is still loading
-        for attempt in range(3):
-            response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            output = response.json()
+        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
 
-            # Handle different output formats
-            if isinstance(output, list) and len(output) > 0:
-                if "generated_text" in output[0]:
-                    return output[0]["generated_text"].strip()
-                elif "summary_text" in output[0]:
-                    return output[0]["summary_text"].strip()
+        # 🔎 Debug info (check in terminal)
+        print("DEBUG STATUS:", response.status_code)
+        print("DEBUG RESPONSE:", response.text[:500])  # show first 500 chars
+        print("DEBUG URL:", HF_API_URL)
 
-            # Model still loading
-            if "error" in output and "loading" in output["error"].lower():
-                time.sleep(10)  # wait and retry
-                continue
+        response.raise_for_status()  # raise error if status not 200 OK
 
+        output = response.json()
+
+        # Hugging Face returns [{"generated_text": "..."}]
+        if isinstance(output, list) and "generated_text" in output[0]:
+            return output[0]["generated_text"].strip()
+        else:
             return "⚠️ AI advice unavailable. Try again later."
-
-        return "⚠️ AI advice unavailable after multiple retries."
 
     except Exception as e:
         # Fallback system
@@ -54,7 +47,7 @@ def get_ai_advice(prompt: str) -> str:
             "Get proper sleep — memory strengthens during rest."
         ]
         return (
-            f"⚠️ AI error: {str(e)}\n\nHere are some fallback tips:\n- "
+            f"🤖 ⚠️ AI error: {e}\n\nHere are some fallback tips:\n- "
             + "\n- ".join(random.sample(fallback_tips, 3))
         )
 
@@ -64,6 +57,20 @@ st.set_page_config(
     page_icon="📘",
     layout="wide",
     initial_sidebar_state="expanded"
+)
+
+# Styling
+st.markdown(
+    """
+    <style>
+    body {background: linear-gradient(to right, #1f1f2e, #2c2c54); color: #f8f8f2;}
+    .stApp {background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c"); background-size: cover; background-attachment: fixed;}
+    .chat-bubble {padding: 1rem; margin: 0.5rem 0; border-radius: 12px; max-width: 70%;}
+    .user-bubble {background-color: #4a69bd; color: white; margin-left: auto; text-align: right;}
+    .bot-bubble {background-color: #2c3e50; color: #ecf0f1; margin-right: auto; text-align: left;}
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 st.title("📘 Study Pattern Analyzer")
@@ -85,7 +92,7 @@ if "chat_history" not in st.session_state:
 if "xp" not in st.session_state:
     st.session_state.xp = 0
 
-# Combine input data into a prompt for AI
+# Build AI prompt
 prompt_text = (
     f"Hours studied: {hours_studied}, "
     f"Breaks: {breaks_taken}, "
@@ -99,15 +106,15 @@ if st.button("🔍 Get Personalized Advice"):
     st.session_state.chat_history.append(("user", prompt_text))
     st.session_state.chat_history.append(("bot", advice))
 
-# Display chat history
+# Display chat
 st.markdown("### 💬 Study Insights")
 for role, text in st.session_state.chat_history:
     if role == "user":
-        st.success(f"👤 {text}")
+        st.markdown(f"<div class='chat-bubble user-bubble'>{text}</div>", unsafe_allow_html=True)
     else:
-        st.info(f"🤖 {text}")
+        st.markdown(f"<div class='chat-bubble bot-bubble'>{text}</div>", unsafe_allow_html=True)
 
-# Gamification - XP
+# Gamification
 st.sidebar.header("🎯 Gamification Progress")
 if st.button("✅ I followed today's advice!"):
     st.session_state.xp += 10
