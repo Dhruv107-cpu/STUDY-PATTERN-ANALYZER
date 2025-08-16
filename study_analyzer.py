@@ -1,127 +1,151 @@
 import streamlit as st
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-import tempfile
-import matplotlib.pyplot as plt
-import datetime
+import random
 
-# -----------------------------
-# PDF Export Function
-# -----------------------------
-def export_to_pdf(notes_dict, filename="study_notes.pdf"):
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    c = canvas.Canvas(temp_file.name, pagesize=letter)
-    width, height = letter
+# ----------------- STREAMLIT CONFIG -----------------
+st.set_page_config(
+    page_title="📘 Study Pattern Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, height - 40, "📚 Study Notes Export")
-    y = height - 70
+# ----------------- SESSION STATE -----------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-    c.setFont("Helvetica", 12)
-    for category, notes in notes_dict.items():
-        if notes.strip():
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(50, y, f"📂 {category}")
-            y -= 20
-
-            c.setFont("Helvetica", 11)
-            for line in notes.strip().split("\n"):
-                c.drawString(70, y, line)
-                y -= 18
-                if y < 50:
-                    c.showPage()
-                    y = height - 50
-                    c.setFont("Helvetica", 11)
-
-            y -= 10
-
-    c.save()
-    return temp_file.name
-
-# -----------------------------
-# Streamlit Page Setup
-# -----------------------------
-st.set_page_config(page_title="📚 Study Pattern Analyzer", layout="wide")
-
-st.title("📚 Study Pattern Analyzer")
-st.write("Track your study patterns, take categorized notes, view progress, get reminders, and export them as PDF.")
-
-# -----------------------------
-# Session State Initialization
-# -----------------------------
-if "study_notes" not in st.session_state:
-    st.session_state.study_notes = {"Math": "", "AI": "", "Daily Plan": "", "Others": ""}
+if "xp" not in st.session_state:
+    st.session_state.xp = 0
 
 if "streak" not in st.session_state:
     st.session_state.streak = 0
-if "last_entry_date" not in st.session_state:
-    st.session_state.last_entry_date = None
 
-# -----------------------------
-# Daily Reminder Check
-# -----------------------------
-today = datetime.date.today()
-if st.session_state.last_entry_date != today:
-    st.warning("⏰ Reminder: You haven’t added any notes today. Stay consistent! 💪")
+if "mood_history" not in st.session_state:
+    st.session_state.mood_history = []
 
-# -----------------------------
-# Category Selector
-# -----------------------------
-category = st.selectbox("📂 Choose Category", ["Math", "AI", "Daily Plan", "Others"])
+if "goal" not in st.session_state:
+    st.session_state.goal = 4  # default target
 
-# -----------------------------
-# Text Note Input
-# -----------------------------
-note = st.text_area("✍️ Write a study note:")
-if st.button("➕ Add Note"):
-    if note.strip():
-        st.session_state.study_notes[category] += f"- {note.strip()}\n"
-        st.success(f"✅ Note added to {category}!")
+# ----------------- UI STYLING -----------------
+st.markdown(
+    """
+    <style>
+    body {background: linear-gradient(to right, #1f1f2e, #2c2c54); color: #f8f8f2;}
+    .stApp {background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c"); background-size: cover; background-attachment: fixed;}
+    .chat-bubble {padding: 1rem; margin: 0.5rem 0; border-radius: 12px; max-width: 70%;}
+    .user-bubble {background-color: #4a69bd; color: white; margin-left: auto; text-align: right;}
+    .bot-bubble {background-color: #2c3e50; color: #ecf0f1; margin-right: auto; text-align: left;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-        # Update streak
-        if st.session_state.last_entry_date == today - datetime.timedelta(days=1):
-            st.session_state.streak += 1
-        elif st.session_state.last_entry_date != today:
-            st.session_state.streak = 1
-        st.session_state.last_entry_date = today
+st.title("📘 Study Pattern Analyzer")
+st.markdown("### ✨ Select your study habits to get personalized advice")
 
-# -----------------------------
-# Display Notes by Category
-# -----------------------------
-st.subheader("🗒️ Your Notes by Category")
-for cat, notes in st.session_state.study_notes.items():
-    if notes.strip():
-        st.text_area(f"{cat} Notes", notes, height=150)
+# ----------------- USER INPUTS -----------------
+hours_studied = st.slider("📚 Hours Studied Today", 0.0, 12.0, 4.0, 0.5)
+breaks_taken = st.slider("☕ Breaks Taken", 0, 10, 2, 1)
+revision_done = st.selectbox("🔁 Did you revise today?", ["Yes", "No"])
+mood = st.selectbox("😊 Mood Today", ["Happy", "Neutral", "Stressed", "Tired"])
+energy_level = st.selectbox("⚡ Energy Level", ["High", "Medium", "Low"])
 
-# -----------------------------
-# Progress Dashboard
-# -----------------------------
-st.subheader("📊 Progress Dashboard")
+revision_bool = revision_done == "Yes"
 
-category_counts = {cat: len(notes.strip().split("\n")) if notes.strip() else 0 
-                   for cat, notes in st.session_state.study_notes.items()}
-total_notes = sum(category_counts.values())
+# ----------------- DAILY GOAL -----------------
+with st.sidebar:
+    st.header("🎯 Daily Goal")
+    st.session_state.goal = st.number_input("Set your daily study target (hours)", 1, 12, st.session_state.goal)
 
-col1, col2 = st.columns(2)
+# ----------------- RULE-BASED ADVICE -----------------
+def generate_advice(hours, breaks, revision, mood, energy, goal):
+    tips = []
 
-with col1:
-    st.metric("📌 Total Notes", total_notes)
-    st.metric("🔥 Streak", f"{st.session_state.streak} days")
-    for cat, count in category_counts.items():
-        st.write(f"✅ {cat}: {count} notes")
+    # Hours studied
+    if hours < goal:
+        tips.append(f"📌 Try to reach your target of {goal} hours. You studied {hours} today.")
+    else:
+        tips.append(f"✅ Great! You achieved your study goal of {goal} hours today.")
 
-with col2:
-    if total_notes > 0:
-        fig, ax = plt.subplots()
-        ax.bar(category_counts.keys(), category_counts.values())
-        ax.set_ylabel("Number of Notes")
-        ax.set_title("Notes per Category")
-        st.pyplot(fig)
+    # Breaks
+    if breaks == 0:
+        tips.append("⚠️ No breaks? Take short breaks to stay fresh.")
+    elif breaks > 5:
+        tips.append("☕ Too many breaks may reduce focus. Try balancing.")
 
-# -----------------------------
-# Export PDF Button
-# -----------------------------
-if st.button("📤 Export Notes as PDF"):
-    pdf_path = export_to_pdf(st.session_state.study_notes)
-    with open(pdf_path, "rb") as f:
-        st.download_button("⬇️ Download PDF", f, file_name="study_notes.pdf")
+    # Revision
+    if not revision:
+        tips.append("🔁 Add 15 minutes of revision to strengthen memory.")
+
+    # Mood/Energy
+    if mood == "Stressed" and energy == "Low":
+        tips.append("🧘 Try relaxation or a walk to recharge your mind.")
+    elif mood == "Happy" and energy == "High":
+        tips.append("🚀 Perfect state to push your limits today!")
+
+    # Random motivational message
+    motivation = random.choice([
+        "🌟 Keep pushing, you’re building your future!",
+        "🔥 Small steps daily lead to big success.",
+        "💡 Focus on progress, not perfection.",
+        "⏳ Consistency beats intensity every time.",
+        "📖 Knowledge is compounding — keep going!"
+    ])
+    tips.append(motivation)
+
+    return tips
+
+# ----------------- BUTTON TO GET ADVICE -----------------
+if st.button("🔍 Get Personalized Advice"):
+    advice_list = generate_advice(hours_studied, breaks_taken, revision_bool, mood, energy_level, st.session_state.goal)
+
+    # Store chat
+    st.session_state.chat_history.append(("user", f"Studied {hours_studied}h, Breaks {breaks_taken}, Revision {revision_done}, Mood {mood}, Energy {energy_level}"))
+    for tip in advice_list:
+        st.session_state.chat_history.append(("bot", tip))
+
+    # Track streaks
+    if hours_studied >= st.session_state.goal:
+        st.session_state.streak += 1
+        st.session_state.xp += 20
+    else:
+        st.session_state.streak = 0
+
+    # Track mood history
+    st.session_state.mood_history.append(mood)
+
+# ----------------- DISPLAY CHAT -----------------
+st.markdown("### 💬 Study Insights")
+for role, text in st.session_state.chat_history:
+    if role == "user":
+        st.markdown(f"<div class='chat-bubble user-bubble'>{text}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='chat-bubble bot-bubble'>{text}</div>", unsafe_allow_html=True)
+
+# ----------------- GAMIFICATION -----------------
+st.sidebar.header("🔥 Progress Tracker")
+st.sidebar.progress(min(st.session_state.xp, 100))
+st.sidebar.write(f"XP: {st.session_state.xp}/100")
+
+if st.session_state.xp >= 50 and st.session_state.xp < 100:
+    st.sidebar.success("🥉 Bronze Badge Unlocked!")
+elif st.session_state.xp >= 100:
+    st.sidebar.success("🥈 Silver Badge Unlocked!")
+
+st.sidebar.write(f"🔥 Current Streak: {st.session_state.streak} days")
+
+# ----------------- LEADERBOARD -----------------
+st.sidebar.header("🏆 Leaderboard (Simulation)")
+fake_scores = {
+    "You": st.session_state.xp,
+    "Alice": 70,
+    "Bob": 40,
+    "Charlie": 90
+}
+sorted_scores = sorted(fake_scores.items(), key=lambda x: x[1], reverse=True)
+for name, score in sorted_scores:
+    st.sidebar.write(f"{name}: {score} XP")
+
+# ----------------- MOOD TRACKER -----------------
+if len(st.session_state.mood_history) > 1:
+    st.markdown("### 📊 Mood Tracker")
+    st.line_chart(st.session_state.mood_history)
