@@ -1,36 +1,28 @@
-# 🤖 Study Coach Assistant
+# 📘 Study Pattern Analyzer — Super Edition
 
-An AI-powered **Study Performance Analyzer** built with [Streamlit](https://streamlit.io/).  
-This app helps students track their daily study habits and get **personalized advice** for better performance.  
-It features a **modern chat-like interface**, adaptive **dark/light theme**, and a beautiful **background effect** for a professional look.
+A **modern, interactive study tracker** built with **Streamlit**, designed to help students track study habits, manage focus with **Pomodoro timers**, monitor mood, gain insights, and generate professional PDF reports. Includes gamification features, a friendly study buddy, and background music for enhanced focus.
 
 ---
 
-## 🚀 Features
+## Features
 
-- 📅 **Daily Study Logging**  
-  Track hours studied, breaks, revision time, mood, and test scores.
+- **Study Input Logging**: Track hours studied, breaks, revision, mood, energy, and focus topic.
+- **Pomodoro Timer**: 25/5 style timer with automatic phase switching and live countdown.
+- **Growth Tree Visualization**: Gamified progress indicator based on daily goal completion.
+- **Mood & Energy Tracking**: Log mood and energy levels to get tailored recommendations.
+- **Personalized Recommendations**: AI-inspired tips based on study patterns and habits.
+- **Buddy Chat**: Choose a study buddy (Coach Nova, Zen Panda, Professor Byte) for motivational messages.
+- **PDF Report Export**: Generate a professional daily report of your study log, recommendations, and buddy messages.
+- **Gamification**: Earn XP, track streaks, and visualize progress in the sidebar.
+- **Background Music**: Lo-fi, soft piano, or ambient rain tracks for focused study.
+- **Customizable Theme**: Light and Dark mode support.
 
-- 💬 **Smart Personalized Advice**  
-  AI-like suggestions on how to improve focus, revision, and performance.
+1. **Clone the repository**
 
-- 🎨 **Modern UI/UX**  
-  - Glass-effect chat bubbles for advice  
-  - Background image with dark/light theme support  
-  - Professional styling for a user-friendly experience  
+```bash
+git clone https://github.com/<your-username>/study-pattern-analyzer.git
+cd study-pattern-analyzer
 
-- 📂 **Data Persistence**  
-  Saves your logs in a local CSV file (`study_data.csv`).
-
----
-
-## 🛠️ Tech Stack
-
-- **Python 3.10+**
-- **Streamlit**
-- **Pandas**
-
----
 
 ## 📦 Installation
 
