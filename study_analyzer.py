@@ -324,12 +324,12 @@ with mid:
                     st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("work_start")))
                 else:
                     st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("break_start")))
-            st.experimental_rerun()
+            st.rerun()
     with c4:
         st.write(" ")
         if st.button("Reset", use_container_width=True):
             reset_timer()
-            st.experimental_rerun()
+            st.rerun()
 
     # Show remaining, flip mode when time hits zero
     remaining = current_remaining()
@@ -341,7 +341,7 @@ with mid:
             st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("work_start")))
         else:
             st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("break_start")))
-        st.experimental_rerun()
+        st.rerun()
 
     st.markdown(
         f"""
@@ -356,7 +356,7 @@ with mid:
     # Small auto-refresh effect while running
     if st.session_state.pomo_running:
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
 
 # ---------------------------
 # RIGHT: VOICE + BUDDY + RECS + PDF
