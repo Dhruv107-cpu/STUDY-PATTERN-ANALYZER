@@ -211,7 +211,7 @@ with col_theme:
     mode = st.radio("Appearance", ["Dark", "Light"], index=0 if st.session_state.theme == "Dark" else 1, horizontal=True)
     if mode != st.session_state.theme:
         st.session_state.theme = mode
-        st.experimental_rerun()
+        st.rerun()
 
 st.write("")
 
