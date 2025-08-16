@@ -329,7 +329,7 @@ with mid:
         st.write(" ")
         if st.button("Reset", use_container_width=True):
             reset_timer()
-            st.experimental_rerun()
+            st.rerun()
 
     # Show remaining, flip mode when time hits zero
     remaining = current_remaining()
@@ -356,7 +356,7 @@ with mid:
     # Small auto-refresh effect while running
     if st.session_state.pomo_running:
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
 
 # ---------------------------
 # RIGHT: VOICE + BUDDY + RECS + PDF
