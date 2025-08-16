@@ -175,7 +175,7 @@ if st.session_state.clock_running:
     elapsed = time.time() - st.session_state.start_time
     total_time = st.session_state.study_time + elapsed / 3600
     placeholder.write(f"⏳ Total Study Time: {total_time:.2f} hrs")
-    st.experimental_rerun()
+    st.rerun()
 else:
     total_time = st.session_state.study_time
     placeholder.write(f"⏳ Total Study Time: {total_time:.2f} hrs")
