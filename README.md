@@ -17,20 +17,15 @@ A **modern, interactive study tracker** built with **Streamlit**, designed to he
 - **Background Music**: Lo-fi, soft piano, or ambient rain tracks for focused study.
 - **Customizable Theme**: Light and Dark mode support.
 
-1. **Clone the repository**
 
-```bash
-git clone https://github.com/<your-username>/study-pattern-analyzer.git
+
+git clone https://github.com/Dhruv107-cpu/study-pattern-analyzer.git
 cd study-pattern-analyzer
 
 
 ## 📦 Installation
 
-Clone this repository:
 
-```bash
-git clone https://github.com/Dhruv107-cpu/STUDY-PATTERN-ANALYZER.git
-cd STUDY-PATTERN-ANALYZER
  
  
  Create and activate a virtual environment:
