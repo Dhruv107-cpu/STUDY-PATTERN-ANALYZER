@@ -3,6 +3,7 @@ import random
 import requests
 import streamlit as st
 from dotenv import load_dotenv
+import time
 
 # Load environment variables
 load_dotenv()
@@ -13,21 +14,34 @@ HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
 # ----------------- AI ADVICE FUNCTION -----------------
 def get_ai_advice(prompt: str) -> str:
-    """Fetch AI advice using Hugging Face API, with fallback tips if unavailable."""
+    """Fetch AI advice using Hugging Face API, with retries if model is loading."""
     try:
         headers = {"Authorization": f"Bearer {HF_API_KEY}"}
         payload = {"inputs": f"Give personalized study advice for this student: {prompt}"}
 
-        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
+        # Retry up to 3 times in case model is still loading
+        for attempt in range(3):
+            response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
+            response.raise_for_status()
+            output = response.json()
 
-        output = response.json()
-        if isinstance(output, list) and "generated_text" in output[0]:
-            return output[0]["generated_text"].strip()
-        else:
+            # Handle different output formats
+            if isinstance(output, list) and len(output) > 0:
+                if "generated_text" in output[0]:
+                    return output[0]["generated_text"].strip()
+                elif "summary_text" in output[0]:
+                    return output[0]["summary_text"].strip()
+
+            # Model still loading
+            if "error" in output and "loading" in output["error"].lower():
+                time.sleep(10)  # wait and retry
+                continue
+
             return "⚠️ AI advice unavailable. Try again later."
 
-    except Exception:
+        return "⚠️ AI advice unavailable after multiple retries."
+
+    except Exception as e:
         # Fallback system
         fallback_tips = [
             "Break big tasks into smaller, achievable goals.",
@@ -39,7 +53,7 @@ def get_ai_advice(prompt: str) -> str:
             "Get proper sleep — memory strengthens during rest."
         ]
         return (
-            "⚠️ AI advice not available right now.\n\nHere are some fallback tips:\n- "
+            f"⚠️ AI error: {str(e)}\n\nHere are some fallback tips:\n- "
             + "\n- ".join(random.sample(fallback_tips, 3))
         )
 
@@ -51,45 +65,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Dark theme & background
-st.markdown(
-    """
-    <style>
-    body {background: linear-gradient(to right, #1f1f2e, #2c2c54); color: #f8f8f2;}
-    .stApp {background-image: url("https://images.unsplash.com/photo-1519389950473-47ba0277781c"); background-size: cover; background-attachment: fixed;}
-    .chat-bubble {padding: 1rem; margin: 0.5rem 0; border-radius: 12px; max-width: 70%;}
-    .user-bubble {background-color: #4a69bd; color: white; margin-left: auto; text-align: right;}
-    .bot-bubble {background-color: #2c3e50; color: #ecf0f1; margin-right: auto; text-align: left;}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 st.title("📘 Study Pattern Analyzer")
 st.markdown("### ✨ Select your study habits to get personalized advice")
 
-# ----------------- User Inputs (Selectable) -----------------
-hours_studied = st.slider(
-    "📚 Hours Studied Today",
-    min_value=0.0,
-    max_value=12.0,
-    value=4.0,
-    step=0.5
-)
-
-breaks_taken = st.slider(
-    "☕ Breaks Taken",
-    min_value=0,
-    max_value=10,
-    value=2,
-    step=1
-)
-
+# ----------------- User Inputs -----------------
+hours_studied = st.slider("📚 Hours Studied Today", 0.0, 12.0, 4.0, step=0.5)
+breaks_taken = st.slider("☕ Breaks Taken", 0, 10, 2, step=1)
 revision_done = st.selectbox("🔁 Did you revise today?", options=["Yes", "No"])
 mood = st.selectbox("😊 Mood Today", options=["Happy", "Neutral", "Stressed", "Tired"])
 energy_level = st.selectbox("⚡ Energy Level", options=["High", "Medium", "Low"])
 
-revision_bool = True if revision_done == "Yes" else False
+revision_bool = revision_done == "Yes"
 
 # ----------------- Chat & Gamification -----------------
 if "chat_history" not in st.session_state:
@@ -116,9 +102,9 @@ if st.button("🔍 Get Personalized Advice"):
 st.markdown("### 💬 Study Insights")
 for role, text in st.session_state.chat_history:
     if role == "user":
-        st.markdown(f"<div class='chat-bubble user-bubble'>{text}</div>", unsafe_allow_html=True)
+        st.success(f"👤 {text}")
     else:
-        st.markdown(f"<div class='chat-bubble bot-bubble'>{text}</div>", unsafe_allow_html=True)
+        st.info(f"🤖 {text}")
 
 # Gamification - XP
 st.sidebar.header("🎯 Gamification Progress")
