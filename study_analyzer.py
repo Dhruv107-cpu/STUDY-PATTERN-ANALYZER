@@ -10,7 +10,8 @@ load_dotenv()
 
 # Hugging Face API setup
 HF_API_KEY = os.getenv("HF_API_KEY")
-HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+
 
 # ----------------- AI ADVICE FUNCTION -----------------
 def get_ai_advice(prompt: str) -> str:
