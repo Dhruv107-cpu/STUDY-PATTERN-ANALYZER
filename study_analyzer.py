@@ -188,7 +188,7 @@ if st.button("Start Pomodoro"):
         timer_display = f"{mins:02d}:{secs:02d}"
         st.markdown(f"**Time Remaining: {timer_display}**")
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
 
 # ----------------- PDF EXPORT -----------------
 def export_pdf(logs):
