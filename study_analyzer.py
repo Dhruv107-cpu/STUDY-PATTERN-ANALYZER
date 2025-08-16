@@ -324,7 +324,7 @@ with mid:
                     st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("work_start")))
                 else:
                     st.session_state.buddy_chat.append((st.session_state.buddy, buddy_msg("break_start")))
-            st.experimental_rerun()
+            st.rerun()
     with c4:
         st.write(" ")
         if st.button("Reset", use_container_width=True):
